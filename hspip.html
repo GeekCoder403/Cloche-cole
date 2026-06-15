@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horaire Scolaire</title>
+    <style>
+        /* ===================== RESET & BASE ===================== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #000000;
+            --accent: #39ff14;
+            --old-accent: #39ff14;
+            --accent-dim: rgba(57, 255, 20, 0.15);
+            --accent-mid: rgba(57, 255, 20, 0.4);
+            --text: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.45);
+            --text-mid: rgba(255, 255, 255, 0.7);
+            --panel-bg: rgba(10, 10, 10, 0.95);
+            --panel-border: rgba(57, 255, 20, 0.25);
+            --input-bg: rgba(20, 20, 20, 0.9);
+            --danger: #ff3b3b;
+            --warn: #ffb800;
+            --glow-on: 1;
+            --font-scale: 1;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Roboto', 'Courier New', Courier, monospace;
+            overflow-x: hidden;
+            transition: all 0.2s;
+            transition: background 0.5s, color 0.5s;
+        }
+
+        /* ===================== SCANLINES OVERLAY ===================== */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px);
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.3;
+        }
+
+        /* ===================== LAYOUT ===================== */
+        #app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===================== HEADER ===================== */
+        #header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            position: relative;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        #header .logo {
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            opacity: 0.8;
+            text-shadow: calc(var(--glow-on) * 0px) 0 calc(var(--glow-on) * 8px) var(--accent);
+        }
+
+        #clock-display {
+            font-size: 0.85rem;
+            color: var(--text-mid);
+            letter-spacing: 0.1em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid var(--panel-border);
+            color: var(--text-mid);
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-icon:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .btn-icon.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        /* ===================== DAY SELECTOR ===================== */
+        #day-selector-bar {
+            display: flex;
+            gap: 6px;
+            padding: 8px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            overflow-x: auto;
+            background: rgba(0, 0, 0, 0.4);
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-mid) transparent;
+            align-items: center;
+        }
+
+        #day-selector-bar::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        #day-selector-bar::-webkit-scrollbar-thumb {
+            background: var(--glow-on);
+        }
+
+        .day-tab {
+            border: 1px solid var(--panel-border);
+            background: transparent;
+            color: var(--text-dim);
+            padding: 5px 14px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .day-tab:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .day-tab.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: calc(var(--glow-on) * 0px) 0 calc(var(--glow-on) * 10px) var(--accent-mid);
+        }
+
+        .day-tab-school {
+            cursor: pointer;
+        }
+
+        .day-tab-school {
+            --school-accent: #39ff14;
+            --school-accent-dim: rgba(57, 255, 20, 0.15);
+            cursor: pointer;
+        }
+
+        .day-tab-school:hover {
+            border-color: var(--school-accent) !important;
+            color: var(--school-accent) !important;
+            background: var(--school-accent-dim) !important;
+        }
+
+        .day-tab-school.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        #btn-add-day {
+            border: 1px dashed var(--panel-border);
+            background: transparent;
+            color: var(--text-dim);
+            padding: 5px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            transition: all 0.8s;
+        }
+
+        #btn-add-day:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ===================== MAIN COUNTDOWN AREA ===================== */
+        #main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: min(555.55px, 90vw);
+            height: min(300px, 50vh);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #main-canvas {
+            background: transparent;
+        }
+
+        #status-label {
+            font-size: calc(0.9rem * var(--font-scale));
+            color: var(--text-dim);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            min-height: 1.2em;
+        }
+
+        #countdown-display {
+            font-size: calc(5.5rem * var(--font-scale));
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            line-height: 1;
+            text-shadow:
+                calc(var(--glow-on) * 0px) 0 calc(var(--glow-on) * 20px) var(--accent),
+                calc(var(--glow-on) * 0px) 0 calc(var(--glow-on) * 40px) var(--accent),
+                calc(var(--glow-on) * 0px) 0 calc(var(--glow-on) * 60px) rgba(57, 255, 20, 0.3);
+            font-variant-numeric: tabular-nums;
+            word-break: break-word;
+            transition: all 0.3s;
+        }
+
+        #time-logo {
+            display: inline-block;
+            perspective: 1000px;
+            transform-style: preserve-3d;
+            color: var(--accent);
+            transition: all 0.3s;
+        }
+
+        #period-label {
+            font-size: calc(1.4rem * var(--font-scale));
+            margin-top: 16px;
+            color: var(--text-mid);
+            letter-spacing: 0.08em;
+            min-height: 1.5em;
+        }
+
+        #progress-container {
+            width: min(500px, 90vw);
+            margin-top: 28px;
+            position: relative;
+        }
+
+        #progress-bar-bg {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        #progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 1s linear;
+            box-shadow: calc(var(--glow-on) * 0px) 0 calc(var(--glow-on) * 8px) var(--accent);
+        }
+
+        #progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 5px;
+            letter-spacing: 0.05em;
+        }
+
+        #next-period-info {
+            margin-top: 28px;
+            font-size: calc(0.8rem * var(--font-scale));
+            color: var(--text-dim);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            min-height: 1.2em;
+        }
+
+        /* ===================== SCHEDULE LIST (BOTTOM) ===================== */
+        #schedule-list-container {
+            padding: 0 20px 20px;
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        #schedule-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--panel-border);
+            margin-bottom: 8px;
+        }
+
+        #schedule-list-header span {
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .period-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            cursor: default;
+            font-size: 0.8rem;
+            position: relative;
+            user-select: none;
+        }
+
+        .period-row:hover {
+            border-color: var(--panel-border);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .period-row.current {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: inset 0 0 calc(var(--glow-on) * 12px) var(--accent-dim);
+        }
+
+        .period-row.current .period-name {
+            color: var(--accent);
+        }
+
+        .period-drag-handle {
+            cursor: grab;
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            padding: 0 4px;
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+
+        .period-row:hover .period-drag-handle {
+            opacity: 0.8;
+        }
+
+        .period-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+
+        .period-row.current .period-dot {
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .period-name {
+            flex: 1;
+            letter-spacing: 0.05em;
+        }
+
+        .period-time {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .period-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .period-row:hover .period-actions {
+            opacity: 1;
+        }
+
+        .btn-mini {
+            background: transparent;
+            border: 1px solid var(--panel-border);
+            color: var(--text-dim);
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .btn-mini:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-mini.danger:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .btn-add-period {
+            width: 100%;
+            background: transparent;
+            border: 1px dashed var(--panel-border);
+            color: var(--text-dim);
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            transition: all 0.2s;
+            margin-top: 6px;
+        }
+
+        .btn-add-period:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ===================== PANELS / MODALS ===================== */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 24px;
+            width: min(460px, 100%);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 0 calc(var(--glow-on) * 30px) rgba(57, 255, 20, 0.08);
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+
+        .overlay.open .panel {
+            transform: scale(1);
+        }
+
+        .panel-wide {
+            width: min(680px, 100%);
+        }
+
+        .panel h2 {
+            font-size: 0.8rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        input[type="time"],
+        input[type="color"],
+        select {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            transition: border-color 0.2s;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent);
+        }
+
+        input[type="color"] {
+            height: 38px;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--panel-border);
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 9px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            transition: all 0.2s;
+            white-space: nowrap;
+            opacity: 0.85;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--panel-border);
+            color: var(--text-mid);
+            padding: 9px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--text);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .btn-danger {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 9px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 59, 59, 0.1);
+        }
+
+        /* ===================== SETTINGS PANEL ===================== */
+        .settings-section {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 16px;
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+        }
+
+        .settings-section h3 {
+            font-size: 0.65rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 12px;
+        }
+
+        .setting-row label {
+            font-size: 0.8rem;
+            color: var(--text-mid);
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .toggle {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid var(--panel-border);
+            width: 36px;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: var(--text-dim);
+            border-radius: 50%;
+            left: 2px;
+            top: 2px;
+            transition: 0.2s;
+        }
+
+        .toggle input:checked+.toggle-slider {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .toggle input:checked+.toggle-slider::before {
+            background: var(--accent);
+            left: 18px;
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+            border: none;
+            padding: 0;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .range-val {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .rtt {
+            display: inline-block;
+            perspective: 1000px;
+        }
+
+        @keyframes rotate3D {
+            0% {
+                transform: rotateY(0deg);
+                color: var(--old-accent);
+            }
+
+            50% {
+                transform: rotateY(180deg);
+                color: var(--warn);
+            }
+
+            100% {
+                transform: rotateY(360deg);
+                color: var(--accent);
+            }
+        }
+
+        .rtt.rotate-3d #countdown-display {
+            animation: rotate3D 0.8s ease-in-out forwards;
+        }
+
+        /* ===================== DAY MANAGEMENT PANEL ===================== */
+        .day-manage-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+        }
+
+        .day-manage-row:hover {
+            border-color: var(--panel-border);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .day-manage-name {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .day-manage-badge {
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 1px 6px;
+            border-radius: 2px;
+        }
+
+        /* ===================== MINI MODE ===================== */
+        body.mini-mode #header {
+            padding: 6px 12px;
+        }
+
+        body.mini-mode #day-selector-bar {
+            padding: 5px 12px;
+        }
+
+        body.mini-mode #main-container {
+            padding: 16px 12px;
+            justify-content: flex-start;
+            padding-top: 20px;
+        }
+
+        body.mini-mode #countdown-display {
+            font-size: calc(3rem * var(--font-scale));
+        }
+
+        body.mini-mode #schedule-list-container {
+            display: none;
+        }
+
+        /* ===================== SCHOOL HORAIRE SECTION ===================== */
+        .school-horaire-section {
+            margin-top: 16px;
+            border-top: 1px solid var(--panel-border);
+            padding-top: 12px;
+        }
+
+        .school-horaire-section h3 {
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+            opacity: 0.7;
+        }
+
+        /* ===================== TOAST ===================== */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--panel-bg);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            z-index: 9000;
+            transition: transform 0.3s;
+            box-shadow: 0 0 16px var(--accent-mid);
+            white-space: nowrap;
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===================== DRAG OVER ===================== */
+        .period-row.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .period-row.dragging {
+            opacity: 0.4;
+        }
+
+        /* ===================== RESPONSIVE ===================== */
+        @media (max-width: 600px) {
+            #countdown-display {
+                font-size: calc(3.5rem * var(--font-scale));
+            }
+
+            #period-label {
+                font-size: calc(1rem * var(--font-scale));
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            #header {
+                padding: 8px 12px;
+            }
+
+            #day-selector-bar {
+                padding: 6px 12px;
+            }
+
+            #main-container {
+                padding: 20px 12px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            #countdown-display {
+                font-size: calc(2.6rem * var(--font-scale));
+            }
+        }
+
+        /* ===================== ANIMATIONS ===================== */
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                text-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent), 0 0 60px rgba(57, 255, 20, 0.3);
+            }
+
+            50% {
+                text-shadow: 0 0 30px var(--accent), 0 0 60px var(--accent), 0 0 90px rgba(57, 255, 20, 0.5);
+            }
+        }
+
+        #countdown-display.pulsing {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .fade-in {
+            animation: fade-in 0.3s ease forwards;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--panel-border);
+            border-radius: 2px;
+        }
+
+        /* Select options */
+        select option {
+            background: #111;
+            color: var(--text);
+        }
+
+        /* Active horaire indicator */
+        .active-school-badge {
+            font-size: 0.6rem;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 1px 5px;
+            border-radius: 2px;
+            margin-left: 6px;
+            opacity: 0.8;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        #pip-video {
+            display: none;
+            width: 100vw;
+            height: auto;
+            object-fit: cover;
+        }
+        #pip-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div id="app">
+        <div id="header">
+            <div class="logo" id="app-title">⬡ HORAIRE SCOLAIRE</div>
+            <div id="clock-display">--:--:--</div>
+            <div id="header-actions">
+                <button class="btn-icon" id="btn-mini-mode" title="Mode mini">⊡ Mini</button>
+                <button class="btn-icon" id="btn-fullscreen" title="Plein écran">⛶ Plein</button>
+                <button class="btn-icon" id="btn-days-manage" title="Gérer les horaires">☰ Horaires</button>
+                <button class="btn-icon" id="btn-settings">⚙ Paramètres</button>
+            </div>
+        </div>
+
+        <!-- DAY SELECTOR -->
+        <div id="day-selector-bar">
+            <!-- filled by JS -->
+            <button id="btn-add-day">+ Nouvel horaire</button>
+        </div>
+
+        <!-- MAIN COUNTDOWN -->
+        <div id="main-container">
+            <div id="canvas-container">
+                <canvas id="main-canvas"></canvas>
+                <canvas id="pip-canvas" style="display: none;"></canvas>
+                <video id="pip-video" autoplay muted playsinline></video>
+            </div>
+        </div>
+
+        <!-- SCHEDULE LIST -->
+        <div id="schedule-list-container">
+            <div id="schedule-list-header">
+                <span id="schedule-list-title">PÉRIODES</span>
+                <span id="active-school-name" style="color:var(--accent);font-size:0.7rem;letter-spacing:0.1em;"></span>
+            </div>
+            <div id="periods-list"></div>
+            <button class="btn-add-period" id="btn-add-period">+ Ajouter une période</button>
+        </div>
+    </div>
+
+    <!-- ==================== OVERLAYS ==================== -->
+
+    <!-- ADD/EDIT PERIOD -->
+    <div class="overlay" id="period-overlay">
+        <div class="panel">
+            <h2 id="period-form-title">AJOUTER UNE PÉRIODE</h2>
+            <div class="form-group">
+                <label id="lbl-period-name">Nom de la période</label>
+                <input type="text" id="inp-period-name" placeholder="ex: Mathématiques">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label id="lbl-period-start">Heure de début</label>
+                    <input type="time" id="inp-period-start">
+                </div>
+                <div class="form-group">
+                    <label id="lbl-period-end">Heure de fin</label>
+                    <input type="time" id="inp-period-end">
+                </div>
+            </div>
+            <div class="panel-actions">
+                <button class="btn-secondary" id="btn-period-cancel">Annuler</button>
+                <button class="btn-primary" id="btn-period-save">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD/EDIT DAY -->
+    <div class="overlay" id="day-overlay">
+        <div class="panel">
+            <h2 id="day-form-title">CRÉER UN HORAIRE</h2>
+            <div class="form-group">
+                <label id="lbl-day-name">Nom de l'horaire</label>
+                <input type="text" id="inp-day-name" placeholder="ex: Horaire régulier">
+            </div>
+            <div class="panel-actions">
+                <button class="btn-secondary" id="btn-day-cancel">Annuler</button>
+                <button class="btn-primary" id="btn-day-save">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MANAGE DAYS -->
+    <div class="overlay" id="days-manage-overlay">
+        <div class="panel">
+            <h2 id="h2-gerer-jours">GÉRER LES HORAIRES</h2>
+
+            <div class="school-horaire-section">
+                <h3 id="h3-horaires-ecoles">Horaires des écoles</h3>
+                <div id="school-days-list"></div>
+            </div>
+
+            <div style="margin-top:16px;">
+                <h3 style="font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;"
+                    id="h3-jours-perso">Horraires personnalisés</h3>
+                <div id="custom-days-list"></div>
+            </div>
+
+            <div class="panel-actions">
+                <button class="btn-secondary" id="btn-days-manage-close">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="overlay" id="settings-overlay">
+        <div class="panel">
+            <h2 id="h2-parametres">PARAMÈTRES</h2>
+
+            <div class="settings-section">
+                <h3 id="h3-langue">LANGUE / LANGUAGE</h3>
+                <div class="setting-row">
+                    <label id="lbl-langue">Langue de l'interface</label>
+                    <select id="sel-language" style="width:auto;min-width:120px;">
+                        <option value="fr">Français (CA)</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 id="h3-apparence">APPARENCE</h3>
+                <div class="setting-row">
+                    <label id="lbl-bg-color">Couleur d'arrière-plan</label>
+                    <input type="color" id="inp-bg-color" value="#000000" style="width:60px;">
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-accent-color">Couleur du compte à rebours</label>
+                    <input type="color" id="inp-accent-color" value="#39ff14" style="width:60px;">
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-override-school-color">Ignorer les couleurs des écoles</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-override-school-color">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="school-color-note"
+                    style="font-size:0.68rem;color:var(--text-dim);margin-bottom:10px;line-height:1.5;padding:6px 10px;border:1px solid var(--panel-border);border-radius:3px;display:none;">
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-glow">Effet de lueur</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-glow" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-scanlines">Lignes de balayage</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-scanlines" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 id="h3-affichage">AFFICHAGE</h3>
+                <div class="form-group">
+                    <label id="lbl-font-size">Taille de police — <span id="font-size-val">1.0×</span></label>
+                    <div class="range-row">
+                        <input type="range" id="range-font-size" min="0.5" max="2.5" step="0.1" value="1.0">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-12h">Format 12 heures</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-12h">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-show-seconds">Afficher les secondes (horloge)</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-show-seconds" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-pulsing">Animation pulsation</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-pulsing" unchecked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 id="h3-sons">SONS</h3>
+                <div class="setting-row">
+                    <label id="lbl-bell-start">Son en début de période</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-bell-start">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <label id="lbl-bell-end">Son en fin de période</label>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggle-bell-end">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="settings-section">
+                <h3 id="h3-credits">CRÉDITS</h3>
+                <div class="setting-row">
+                    <label id="lbl-credits">Créé par <b>Caleb Gauthier (GeekCoder403)</b><br>4e Secondaire, École des
+                        Pionniers</label>
+                </div>
+            </div>
+
+            <div class="panel-actions">
+                <button class="btn-secondary" id="btn-settings-close">Fermer</button>
+                <button class="btn-primary" id="btn-settings-save">Appliquer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast"></div>
+
+    <script>
+        // ===================================================================
+        // TRANSLATIONS
+        // ===================================================================
+        const LANG = {
+            fr: {
+                appTitle: '⬡ HORAIRE SCOLAIRE',
+                mini: '⊡ Mini',
+                full: '⛶ Plein',
+                days: '☰ Horaires',
+                settings: '⚙ Paramètres',
+                addDay: '+ Nouvel horaire',
+                chargement: 'CHARGEMENT...',
+                periodes: 'PÉRIODES',
+                addPeriod: '+ Ajouter une période',
+                finDe: 'Fin de',
+                dans: 'dans',
+                debutDe: 'Début de',
+                debutCours: 'Début des cours dans',
+                journeeTerminee: 'Journée terminée',
+                enCours: 'EN COURS',
+                pauseAvant: 'PAUSE AVANT',
+                avantCours: 'AVANT LES COURS',
+                apres: 'FIN DE JOURNÉE',
+                prochain: 'Prochain :',
+                aucunHoraire: "Aucune période pour aujourd'hui",
+                periodeName: 'Nom de la période',
+                periodePlaceholder: 'ex: Mathématiques',
+                heureDebut: 'Heure de début',
+                heureFin: 'Heure de fin',
+                annuler: 'Annuler',
+                enregistrer: 'Enregistrer',
+                ajouterPeriode: 'AJOUTER UNE PÉRIODE',
+                modifierPeriode: 'MODIFIER LA PÉRIODE',
+                creerJour: 'CRÉER UN HORAIRE',
+                nomJour: 'Nom de l\'horaire',
+                nomJourPlaceholder: 'ex: Horaire régulier',
+                creer: 'Créer',
+                gererJours: 'GÉRER LES HORAIRES',
+                horairesEcoles: 'Horaires des écoles',
+                joursPerso: 'Horaires personnalisés',
+                fermer: 'Fermer',
+                parametres: 'PARAMÈTRES',
+                langue: 'LANGUE / LANGUAGE',
+                langueLabel: 'Langue de l\'interface',
+                apparence: 'APPARENCE',
+                bgColor: 'Couleur d\'arrière-plan',
+                accentColor: 'Couleur du compte à rebours',
+                glow: 'Effet de lueur',
+                scanlines: 'Lignes de balayage',
+                affichage: 'AFFICHAGE',
+                fontSize: 'Taille de police',
+                format12h: 'Format 12 heures',
+                showSeconds: 'Afficher les secondes (horloge)',
+                pulsing: 'Animation pulsation',
+                sons: 'SONS',
+                bellStart: 'Son en début de période',
+                bellEnd: 'Son en fin de période',
+                appliquer: 'Appliquer',
+                vueHebdo: 'VUE HEBDOMADAIRE',
+                actif: 'ACTIF',
+                dupliquer: 'Dupliquer',
+                renommer: 'Renommer',
+                supprimer: 'Supprimer',
+                activeLabel: 'HORRAIRE ACTIF',
+                schoolLabel: 'École',
+                confirmerSuppr: 'Supprimer cet horaire ?',
+                sauvegarde: 'Paramètres sauvegardés',
+                periodAjoutee: 'Période ajoutée',
+                periodModifiee: 'Période modifiée',
+                periodSupprimee: 'Période supprimée',
+                jourCree: 'Horaire créé',
+                jourSupprime: 'Horaire supprimé',
+                jourDuplique: 'Horaire dupliqué',
+                jourRenomme: 'Horaire renommé',
+                nomRequis: 'Le nom est requis',
+                heuresRequises: 'Les heures sont requises',
+                overrideSchoolColor: 'Ignorer les couleurs des écoles',
+            },
+            en: {
+                appTitle: '⬡ SCHOOL SCHEDULE',
+                mini: '⊡ Mini',
+                full: '⛶ Full',
+                days: '☰ Schedules',
+                settings: '⚙ Settings',
+                addDay: '+ New schedule',
+                chargement: 'LOADING...',
+                periodes: 'PERIODS',
+                addPeriod: '+ Add a period',
+                finDe: 'End of',
+                dans: 'in',
+                debutDe: 'Start of',
+                debutCours: 'Classes start in',
+                journeeTerminee: 'Day finished',
+                enCours: 'IN PROGRESS',
+                pauseAvant: 'BREAK BEFORE',
+                avantCours: 'BEFORE CLASSES',
+                apres: 'END OF DAY',
+                prochain: 'Next:',
+                aucunHoraire: 'No schedule for today',
+                periodeName: 'Period name',
+                periodePlaceholder: 'e.g.: Mathematics',
+                heureDebut: 'Start time',
+                heureFin: 'End time',
+                annuler: 'Cancel',
+                enregistrer: 'Save',
+                ajouterPeriode: 'ADD A PERIOD',
+                modifierPeriode: 'EDIT PERIOD',
+                creerJour: 'CREATE A SCHEDULE',
+                nomJour: 'Schedule name',
+                nomJourPlaceholder: 'e.g.: Regular schedule',
+                creer: 'Create',
+                gererJours: 'MANAGE SCHEDULES',
+                horairesEcoles: 'School schedules',
+                joursPerso: 'Custom SCHEDULES',
+                fermer: 'Close',
+                parametres: 'SETTINGS',
+                langue: 'LANGUAGE / LANGUE',
+                langueLabel: 'Interface language',
+                apparence: 'APPEARANCE',
+                bgColor: 'Background color',
+                accentColor: 'Countdown color',
+                glow: 'Glow effect',
+                scanlines: 'Scanlines',
+                affichage: 'DISPLAY',
+                fontSize: 'Font size',
+                format12h: '12-hour format',
+                showSeconds: 'Show clock seconds',
+                pulsing: 'Pulse animation',
+                sons: 'SOUNDS',
+                bellStart: 'Bell at start of period',
+                bellEnd: 'Bell at end of period',
+                appliquer: 'Apply',
+                actif: 'ACTIVE',
+                dupliquer: 'Duplicate',
+                renommer: 'Rename',
+                supprimer: 'Delete',
+                activeLabel: 'ACTIVE SCHEDULE',
+                schoolLabel: 'School',
+                confirmerSuppr: 'Delete this SCHEDULE?',
+                sauvegarde: 'Settings saved',
+                periodAjoutee: 'Period added',
+                periodModifiee: 'Period modified',
+                periodSupprimee: 'Period deleted',
+                jourCree: 'Schedule created',
+                jourSupprime: 'Schedule deleted',
+                jourDuplique: 'Schedule duplicated',
+                jourRenomme: 'Schedule renamed',
+                nomRequis: 'Name is required',
+                heuresRequises: 'Times are required',
+                overrideSchoolColor: 'Ignorer les couleurs des écoles',
+            }
+        };
+
+        // ===================================================================
+        // SCHOOL SCHEDULES (READ-ONLY)
+        // ===================================================================
+        const SCHOOL_THEME_COLORS = {
+            'Pionniers': '#39ff14',
+            'Compagnons': '#b366ff',
+            'SCG-1er': '#e8c84a',
+            'SCG-2e': '#e8c84a',
+            'Rochebelle': '#a10050',
+            'PAL': '#e3221f',
+        };
+
+        const SCHOOL_SCHEDULES = {
+            'Pionniers': {
+                displayName: { fr: 'École des Pionniers', en: 'Pionniers School' },
+                periods: [
+                    { id: 's1', name: { fr: 'Période 1', en: 'Period 1' }, start: '08:10', end: '09:20' },
+                    { id: 's2', name: { fr: 'Période 2', en: 'Period 2' }, start: '09:35', end: '10:45' },
+                    { id: 's3', name: { fr: 'Période PIC', en: 'Periode PIC' }, start: '10:55', end: '11:15' },
+                    { id: 's4', name: { fr: 'Période 3', en: 'Period 3' }, start: '12:35', end: '13:45' },
+                    { id: 's5', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:00', end: '15:10' },
+                ],
+                timeMod: 117
+            },
+            'Compagnons': {
+                displayName: { fr: 'Collège des Compagnons', en: 'Collège des Compagnons' },
+                periods: [
+                    { id: 'c1', name: { fr: 'Période 1', en: 'Period 1' }, start: '09:10', end: '10:20' },
+                    { id: 'c2', name: { fr: 'Période 2', en: 'Period 2' }, start: '10:35', end: '11:45' },
+                    { id: 'c3', name: { fr: 'Période 3', en: 'Period 3' }, start: '13:05', end: '14:15' },
+                    { id: 'c4', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:30', end: '15:40' },
+                    { id: 'c5', name: { fr: "Période d'étude", en: 'Study Period' }, start: '15:50', end: '16:15' },
+                ],
+                timeMod: 12
+            },
+            'SCG-1er': {
+                displayName: { fr: 'Saint-Charles-Garnier (1er cycle)', en: 'Saint-Charles-Garnier (1st cycle)' },
+                periods: [
+                    { id: 'g1a', name: { fr: 'Période 1', en: 'Period 1' }, start: '08:30', end: '09:42' },
+                    { id: 'g1b', name: { fr: 'Période 2', en: 'Period 2' }, start: '09:55', end: '11:07' },
+                    { id: 'g1c', name: { fr: "Période d'étude", en: 'Study Period' }, start: '11:20', end: '11:45' },
+                    { id: 'g1e', name: { fr: 'Période 3', en: 'Period 3' }, start: '12:55', end: '14:07' },
+                    { id: 'g1f', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:20', end: '15:32' },
+                ],
+                timeMod: -30
+            },
+            'SCG-2e': {
+                displayName: { fr: 'Saint-Charles-Garnier (2e cycle)', en: 'Saint-Charles-Garnier (2nd cycle)' },
+                periods: [
+                    { id: 'g2a', name: { fr: 'Période 1', en: 'Period 1' }, start: '08:30', end: '09:42' },
+                    { id: 'g2b', name: { fr: 'Période 2', en: 'Period 2' }, start: '09:55', end: '11:07' },
+                    { id: 'g2c', name: { fr: 'Période 3', en: 'Period 3' }, start: '11:20', end: '12:32' },
+                    { id: 'g2e', name: { fr: "Période d'étude", en: 'Study Period' }, start: '13:42', end: '14:07' },
+                    { id: 'g2f', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:20', end: '15:32' },
+                ],
+                timeMod: 30
+            },
+            'Rochebelle': {
+                displayName: { fr: "École de Rochebelle", en: 'Rochebelle School' },
+                periods: [
+                    { id: 'r1', name: { fr: 'Période 1', en: 'Period 1' }, start: '09:10', end: '10:25' },
+                    { id: 'r2', name: { fr: 'Période 2', en: 'Period 2' }, start: '10:40', end: '11:55' },
+                    { id: 'r3', name: { fr: 'Période 3', en: 'Period 3' }, start: '13:25', end: '14:40' },
+                    { id: 'r4', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:55', end: '16:10' },
+                ],
+                timeMod: 12
+            },
+            'PAL': {
+                displayName: { fr: "Polyvalente de l'Ancienne Lorette", en: 'PAL' },
+                periods: [
+                    { id: 'p1', name: { fr: 'Période 1', en: 'Period 1' }, start: '09:20', end: '10:35' },
+                    { id: 'p2', name: { fr: 'Période 2', en: 'Period 2' }, start: '10:50', end: '12:05' },
+                    { id: 'p3', name: { fr: 'Période 3', en: 'Period 3' }, start: '13:30', end: '14:45' },
+                    { id: 'p4', name: { fr: 'Période 4', en: 'Period 4' }, start: '15:00', end: '16:15' },
+                ],
+                timeMod: 12
+            }
+        };
+
+        // ===================================================================
+        // STATE
+        // ===================================================================
+        let state = {
+            lang: 'fr',
+            activeDayId: 'school-Pionniers',
+            customDays: [],
+            settings: {
+                bgColor: '#000000',
+                accentColor: '#39ff14',
+                overrideSchoolColor: false,
+                glow: true,
+                scanlines: false,
+                fontSize: 1.0,
+                format12h: false,
+                showSeconds: true,
+                pulsing: false,
+                bellStart: false,
+                bellEnd: false,
+            },
+            miniMode: false,
+        };
+
+        let editingPeriodId = null;
+        let editingDayId = null;
+
+        let canvas, ctx;
+        let pipStream = null;
+        let pipVideo = null;
+
+        // ===================================================================
+        // PERSISTENCE
+        // ===================================================================
+        function saveState() {
+            localStorage.setItem('horaire-scolaire-v3', JSON.stringify(state));
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem('horaire-scolaire-v3');
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    state.lang = saved.lang || 'fr';
+                    state.activeDayId = saved.activeDayId || 'school-Pionniers';
+                    state.customDays = saved.customDays || [];
+                    if (saved.settings) {
+                        state.settings = { ...state.settings, ...saved.settings };
+                    }
+                }
+            } catch (e) { }
+        }
+
+        // ===================================================================
+        // TRANSLATION HELPERS
+        // ===================================================================
+        function t(key) {
+            return LANG[state.lang][key] || LANG['fr'][key] || key;
+        }
+
+        function schoolName(key) {
+            const s = SCHOOL_SCHEDULES[key];
+            if (!s) return key;
+            return s.displayName[state.lang] || s.displayName.fr;
+        }
+
+        function periodName(p) {
+            if (typeof p.name === 'object') return p.name[state.lang] || p.name.fr;
+            return p.name;
+        }
+
+        // ===================================================================
+        // GET ACTIVE PERIODS
+        // ===================================================================
+        function getActivePeriods() {
+            if (state.activeDayId.startsWith('school-')) {
+                const key = state.activeDayId.replace('school-', '');
+                const school = SCHOOL_SCHEDULES[key];
+                if (!school) return [];
+                return school.periods.map(p => ({
+                    id: p.id,
+                    name: periodName(p),
+                    start: p.start,
+                    end: p.end,
+                    readonly: true,
+                }));
+            }
+            const day = state.customDays.find(d => d.id === state.activeDayId);
+            if (!day) return [];
+            return (day.periods || []).map(p => ({ ...p, readonly: false }));
+        }
+
+        function isActiveCustomDay() {
+            return !state.activeDayId.startsWith('school-');
+        }
+
+        // ===================================================================
+        // TIME HELPERS
+        // ===================================================================
+        function timeToSec(t) {
+            const [h, m] = t.split(':').map(Number);
+            return h * 3600 + m * 60;
+        }
+        let timeModifier = 0;
+        function nowSec() {
+            const n = new Date();
+            return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds() - timeModifier;
+        }
+
+        function secToHMS(s) {
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sc = s % 60;
+            return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(sc).padStart(2, '0')}s`;
+        }
+
+        function formatTime(hhmm) {
+            if (!hhmm) return '';
+            const [h, m] = hhmm.split(':').map(Number);
+            if (state.settings.format12h) {
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const h12 = h % 12 || 12;
+                return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+            }
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        // ===================================================================
+        // BELL SOUND
+        // ===================================================================
+        let lastBellPeriodId = null;
+        let lastBellType = null;
+
+        function playBell() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+                osc.start(); osc.stop(ctx.currentTime + 1.2);
+            } catch (e) { }
+        }
+
+        // ===================================================================
+        // COUNTDOWN LOGIC
+        // ===================================================================
+        function computeCountdown() {
+            const periods = getActivePeriods();
+            if (!periods.length) return { type: 'empty' };
+
+            const now = nowSec();
+            const sorted = [...periods].sort((a, b) => timeToSec(a.start) - timeToSec(b.start));
+
+            for (let i = 0; i < sorted.length; i++) {
+                const p = sorted[i];
+                const s = timeToSec(p.start);
+                const e = timeToSec(p.end);
+                if (now >= s && now < e) {
+                    const rem = e - now;
+                    const total = e - s;
+                    const elapsed = now - s;
+                    const next = sorted[i + 1] || null;
+                    return { type: 'in-class', period: p, remaining: rem, total, elapsed, next, periodStart: p.start, periodEnd: p.end };
+                }
+            }
+
+            const first = sorted[0];
+            if (now < timeToSec(first.start)) {
+                return { type: 'before-class', period: first, remaining: timeToSec(first.start) - now, periodStart: first.start };
+            }
+
+            for (let i = 0; i < sorted.length - 1; i++) {
+                const p = sorted[i];
+                const next = sorted[i + 1];
+                const e = timeToSec(p.end);
+                const ns = timeToSec(next.start);
+                if (now >= e && now < ns) {
+                    const rem = ns - now;
+                    return { type: 'between', period: next, remaining: rem, total: ns - e, elapsed: now - e, periodStart: next.start };
+                }
+            }
+
+            return { type: 'after' };
+        }
+
+        // ===================================================================
+        // CANVAS RENDERING
+        // ===================================================================
+        function initCanvas() {
+            canvas = document.getElementById('main-canvas');
+            ctx = canvas.getContext('2d');
+            pipVideo = document.getElementById('pip-video');
+
+            function resizeCanvas() {
+                const container = document.getElementById('main-container');
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                drawCanvas();
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            canvas.addEventListener('click', () => {
+                state.settings.glow = !state.settings.glow;
+            });
+            resizeCanvas();
+
+            startPiPStream();
+        }
+
+        // ===================================================================
+        // PIP STREAM — crops the countdown region and zooms it into PiP
+        // ===================================================================
+        function startPiPStream() {
+            const mainCanvas = document.getElementById('main-canvas');
+            const pipCanvas = document.getElementById('pip-canvas');
+            pipVideo = document.getElementById('pip-video');
+
+            // PiP output resolution — 16:9, matches the reference screenshot
+            const PIP_W = 1920;
+            const PIP_H = 900;
+            pipCanvas.width = PIP_W;
+            pipCanvas.height = PIP_H;
+
+            const pipCtx = pipCanvas.getContext('2d');
+
+            // Crop box expressed as fractions of the main canvas size.
+            // The crop covers the label, big countdown number, progress bar,
+            // and "next period" line — everything visible in the reference image.
+            // Tweak CROP_Y_FRAC / CROP_H_FRAC to shift or expand the window.
+            const CROP_X_FRAC = 0.20;   // left margin
+            const CROP_Y_FRAC = 0.25;   // top  margin (skip dead space above label)
+            const CROP_W_FRAC = 0.6;   // full width minus small side margins
+            const CROP_H_FRAC = 0.6;   // tall enough to include progress + next line
+
+            function updatePiPCanvas() {
+                const cw = mainCanvas.width;
+                const ch = mainCanvas.height;
+
+                // Source rectangle on the main canvas
+                const sx = Math.round(cw * CROP_X_FRAC);
+                const sy = Math.round(ch * CROP_Y_FRAC);
+                const sw = Math.round(cw * CROP_W_FRAC);
+                const sh = Math.round(ch * CROP_H_FRAC);
+
+                // Fill with the background colour so transparent areas stay clean
+                pipCtx.fillStyle = state.settings.bgColor || '#000000';
+                pipCtx.fillRect(0, 0, PIP_W, PIP_H);
+
+                // Crop the relevant region from main canvas and stretch it to
+                // fill the entire PiP canvas → zoomed / magnified effect
+                pipCtx.drawImage(mainCanvas, sx, sy, sw, sh, 0, 0, PIP_W, PIP_H);
+
+                requestAnimationFrame(updatePiPCanvas);
+            }
+
+            updatePiPCanvas();
+
+            // Capture the pip canvas as a media stream and attach to the video element
+            const stream = pipCanvas.captureStream(30);
+            pipVideo.srcObject = stream;
+            pipVideo.play().catch(e => console.log('Video play error:', e));
+        }
+
+        function drawCanvas() {
+            if (!ctx) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const info = computeCountdown();
+            const fontScale = (state.miniMode) ? Number(state.settings.fontSize * 1.2) : Number(state.settings.fontSize * 1.0);
+            const accentColor = getEffectiveAccentColor();
+            const textMidColor = getComputedStyle(document.documentElement).getPropertyValue('--text-mid').trim() || 'rgba(255,255,255,0.7)';
+            const textDimColor = getComputedStyle(document.documentElement).getPropertyValue('--text-dim').trim() || 'rgba(255,255,255,0.45)';
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Period label (above countdown)
+            let periodText = '';
+            if (info.type === 'in-class') periodText = `${t('finDe')} ${info.period.name} ${t('dans')}`;
+            else if (info.type === 'before-class') periodText = `${t('debutCours')}`;
+            else if (info.type === 'between') periodText = `${t('debutDe')} ${info.period.name} ${t('dans')}`;
+
+            if (periodText) {
+                ctx.fillStyle = textMidColor;
+                ctx.font = `${Math.round(16 * fontScale)}px Roboto, 'Courier New', monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(periodText, centerX, centerY - 50 * fontScale);
+            }
+
+            // Big countdown number
+            let countdownText = '';
+            let countdownFontPx = Math.round(48 * fontScale);
+
+            if (info.type === 'empty') countdownText = '--h --m --s';
+            else if (info.type === 'after') { countdownText = t('journeeTerminee'); countdownFontPx = Math.round(32 * fontScale); }
+            else if (info.type === 'in-class') countdownText = secToHMS(info.remaining);
+            else if (info.type === 'before-class') countdownText = secToHMS(info.remaining);
+            else if (info.type === 'between') countdownText = secToHMS(info.remaining);
+
+            ctx.fillStyle = accentColor;
+            ctx.font = `bold ${countdownFontPx}px Roboto, 'Courier New', monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            if (state.settings.glow) {
+                ctx.shadowColor = accentColor;
+                ctx.shadowBlur = 20;
+                ctx.fillText(countdownText, centerX, centerY);
+                ctx.shadowBlur = 40;
+                ctx.fillText(countdownText, centerX, centerY);
+                ctx.shadowBlur = 60;
+                ctx.globalAlpha = 0.3;
+                ctx.fillText(countdownText, centerX, centerY);
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+            } else {
+                ctx.fillText(countdownText, centerX, centerY);
+            }
+
+            // Status label (below countdown)
+            let statusText = '';
+            if (info.type === 'empty') statusText = t('aucunHoraire').toUpperCase();
+            else if (info.type === 'in-class') statusText = `${t('enCours')} — ${formatTime(info.periodStart)} → ${formatTime(info.periodEnd)}`;
+            else if (info.type === 'before-class') statusText = t('avantCours');
+            else if (info.type === 'between') statusText = t('pauseAvant');
+
+            if (statusText) {
+                ctx.fillStyle = textDimColor;
+                ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(statusText, centerX, centerY + 60 * fontScale);
+            }
+
+            // Progress bar
+            const progressY = centerY + (state.miniMode ? 80 : 100) * fontScale;
+            const progressWidth = Math.min(500, canvas.width * 0.9);
+            const progressX = centerX - progressWidth / 2;
+            const barH = state.miniMode ? 8 : 4;
+
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(progressX, progressY, progressWidth, barH);
+
+            let progressPercent = 0;
+            if (info.type === 'in-class') progressPercent = Math.min(100, Math.round((info.elapsed / info.total) * 100));
+            else if (info.type === 'between') progressPercent = Math.min(100, Math.round((info.elapsed / info.total) * 100));
+
+            const fillWidth = (progressPercent / 100) * progressWidth;
+            ctx.fillStyle = accentColor;
+            if (state.settings.glow) {
+                ctx.shadowColor = accentColor;
+                ctx.shadowBlur = 8;
+            }
+            ctx.fillRect(progressX, progressY, fillWidth, barH);
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+
+            // Progress labels
+            ctx.fillStyle = textDimColor;
+            ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
+
+            let startLabel = '';
+            let endLabel = '';
+            const pctLabel = `${progressPercent}%`;
+
+            if (info.type === 'in-class') { startLabel = formatTime(info.periodStart); endLabel = formatTime(info.periodEnd); }
+            else if (info.type === 'before-class') { endLabel = formatTime(info.periodStart); }
+            else if (info.type === 'between') { endLabel = formatTime(info.periodStart); }
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(startLabel, progressX, progressY + 20);
+            ctx.textAlign = 'center';
+            ctx.fillText(pctLabel, progressX + progressWidth / 2, progressY + 20);
+            ctx.textAlign = 'right';
+            ctx.fillText(endLabel, progressX + progressWidth, progressY + 20);
+
+            // Next period
+            let nextText = '';
+            if (info.type === 'in-class' && info.next) nextText = `${t('prochain')} ${info.next.name} — ${formatTime(info.next.start)}`;
+            else if (info.type === 'before-class') nextText = `${t('prochain')} ${info.period.name} — ${formatTime(info.period.start)}`;
+
+            if (nextText) {
+                ctx.fillStyle = textDimColor;
+                ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(nextText, centerX, progressY + 60);
+            }
+        }
+
+        // ===================================================================
+        // CLOCK
+        // ===================================================================
+        function renderClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            let display = '';
+            if (state.settings.format12h) {
+                const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
+                const h12 = now.getHours() % 12 || 12;
+                display = state.settings.showSeconds ? `${h12}:${m}:${s} ${ampm}` : `${h12}:${m} ${ampm}`;
+            } else {
+                display = state.settings.showSeconds ? `${h}:${m}:${s}` : `${h}:${m}`;
+            }
+            const days = state.lang === 'fr'
+                ? ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam']
+                : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const d = days[now.getDay()];
+            const date = `${d} ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+            document.getElementById('clock-display').textContent = `${date} — ${display}`;
+        }
+
+        // ===================================================================
+        // RENDER PERIODS LIST
+        // ===================================================================
+        function renderPeriodsList() {
+            const periods = getActivePeriods();
+            const list = document.getElementById('periods-list');
+            const now = nowSec();
+            const isCustom = isActiveCustomDay();
+            list.innerHTML = '';
+
+            const asn = document.getElementById('active-school-name');
+            if (state.activeDayId.startsWith('school-')) {
+                const key = state.activeDayId.replace('school-', '');
+                asn.textContent = `${t('schoolLabel')}: ${schoolName(key)}`;
+            } else {
+                const day = state.customDays.find(d => d.id === state.activeDayId);
+                asn.textContent = day ? day.name : '';
+            }
+
+            const btn = document.getElementById('btn-add-period');
+            btn.style.display = isCustom ? 'block' : 'none';
+
+            if (!periods.length) {
+                list.innerHTML = `<div style="color:var(--text-dim);font-size:0.8rem;padding:12px 0;text-align:center;">${t('aucunHoraire')}</div>`;
+                return;
+            }
+
+            periods.forEach((p, idx) => {
+                const s = timeToSec(p.start);
+                const e = timeToSec(p.end);
+                const isCurrent = now >= s && now < e;
+                const row = document.createElement('div');
+                row.className = 'period-row' + (isCurrent ? ' current' : '');
+                row.dataset.id = p.id;
+                row.dataset.idx = idx;
+
+                if (isCustom) {
+                    row.draggable = true;
+                    row.addEventListener('dragstart', onDragStart);
+                    row.addEventListener('dragover', onDragOver);
+                    row.addEventListener('dragleave', onDragLeave);
+                    row.addEventListener('drop', onDrop);
+                    row.addEventListener('dragend', onDragEnd);
+                }
+
+                const actionsHtml = isCustom ? `
+      <div class="period-actions">
+        <button class="btn-mini" onclick="editPeriod('${p.id}')" title="${t('renommer')}">✎</button>
+        <button class="btn-mini danger" onclick="deletePeriod('${p.id}')" title="${t('supprimer')}">✕</button>
+      </div>` : '';
+
+                const dragHandle = isCustom ? `<span class="period-drag-handle">⣿</span>` : '';
+
+                row.innerHTML = `
+      ${dragHandle}
+      <span class="period-dot"></span>
+      <span class="period-name">${p.name}</span>
+      <span class="period-time">${formatTime(p.start)} – ${formatTime(p.end)}</span>
+      ${actionsHtml}
+    `;
+                list.appendChild(row);
+            });
+        }
+
+        // ===================================================================
+        // DRAG AND DROP
+        // ===================================================================
+        let dragSrcIdx = null;
+
+        function onDragStart(e) { dragSrcIdx = +e.currentTarget.dataset.idx; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+        function onDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+        function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+        function onDragEnd(e) { e.currentTarget.classList.remove('dragging'); }
+        function onDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            const targetIdx = +e.currentTarget.dataset.idx;
+            if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+            const day = state.customDays.find(d => d.id === state.activeDayId);
+            if (!day) return;
+            const arr = day.periods;
+            const [moved] = arr.splice(dragSrcIdx, 1);
+            arr.splice(targetIdx, 0, moved);
+            dragSrcIdx = null;
+            saveState();
+            renderPeriodsList();
+        }
+
+        // ===================================================================
+        // DAY SELECTOR
+        // ===================================================================
+        function renderDaySelector() {
+            const bar = document.getElementById('day-selector-bar');
+            const addBtn = document.getElementById('btn-add-day');
+            bar.innerHTML = '';
+
+            Object.keys(SCHOOL_SCHEDULES).forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = 'day-tab day-tab-school' + (state.activeDayId === 'school-' + key ? ' active' : '');
+                btn.textContent = schoolName(key);
+                btn.onclick = () => { state.activeDayId = 'school-' + key; saveState(); applySchoolTheme(); renderDaySelector(); renderPeriodsList(); };
+                bar.appendChild(btn);
+            });
+
+            state.customDays.forEach(day => {
+                const btn = document.createElement('button');
+                btn.className = 'day-tab' + (state.activeDayId === day.id ? ' active' : '');
+                btn.textContent = day.name;
+                btn.onclick = () => { state.activeDayId = day.id; saveState(); applySchoolTheme(); renderDaySelector(); renderPeriodsList(); };
+                bar.appendChild(btn);
+            });
+
+            bar.appendChild(addBtn);
+            applySchoolTheme();
+        }
+
+        // ===================================================================
+        // ADD PERIOD
+        // ===================================================================
+        document.getElementById('btn-add-period').onclick = () => {
+            if (!isActiveCustomDay()) return;
+            editingPeriodId = null;
+            document.getElementById('period-form-title').textContent = t('ajouterPeriode');
+            document.getElementById('inp-period-name').value = '';
+            document.getElementById('inp-period-start').value = '';
+            document.getElementById('inp-period-end').value = '';
+            openOverlay('period-overlay');
+        };
+
+        function editPeriod(id) {
+            const day = state.customDays.find(d => d.id === state.activeDayId);
+            if (!day) return;
+            const p = day.periods.find(p => p.id === id);
+            if (!p) return;
+            editingPeriodId = id;
+            document.getElementById('period-form-title').textContent = t('modifierPeriode');
+            document.getElementById('inp-period-name').value = p.name;
+            document.getElementById('inp-period-start').value = p.start;
+            document.getElementById('inp-period-end').value = p.end;
+            openOverlay('period-overlay');
+        }
+
+        document.getElementById('btn-period-save').onclick = () => {
+            const name = document.getElementById('inp-period-name').value.trim();
+            const start = document.getElementById('inp-period-start').value;
+            const end = document.getElementById('inp-period-end').value;
+            if (!name) { showToast(t('nomRequis')); return; }
+            if (!start || !end) { showToast(t('heuresRequises')); return; }
+
+            const day = state.customDays.find(d => d.id === state.activeDayId);
+            if (!day) return;
+
+            if (editingPeriodId) {
+                const p = day.periods.find(p => p.id === editingPeriodId);
+                if (p) { p.name = name; p.start = start; p.end = end; }
+                showToast(t('periodModifiee'));
+            } else {
+                day.periods.push({ id: 'p' + Date.now(), name, start, end });
+                day.periods.sort((a, b) => timeToSec(a.start) - timeToSec(b.start));
+                showToast(t('periodAjoutee'));
+            }
+            saveState();
+            closeOverlay('period-overlay');
+            renderPeriodsList();
+        };
+
+        document.getElementById('btn-period-cancel').onclick = () => closeOverlay('period-overlay');
+
+        function deletePeriod(id) {
+            const day = state.customDays.find(d => d.id === state.activeDayId);
+            if (!day) return;
+            day.periods = day.periods.filter(p => p.id !== id);
+            saveState();
+            renderPeriodsList();
+            showToast(t('periodSupprimee'));
+        }
+
+        // ===================================================================
+        // ADD DAY
+        // ===================================================================
+        document.getElementById('btn-add-day').onclick = () => {
+            document.getElementById('day-form-title').textContent = t('creerJour');
+            document.getElementById('inp-day-name').value = '';
+            editingDayId = null;
+            openOverlay('day-overlay');
+        };
+
+        document.getElementById('btn-day-save').onclick = () => {
+            const name = document.getElementById('inp-day-name').value.trim();
+            if (!name) { showToast(t('nomRequis')); return; }
+            if (editingDayId) {
+                const day = state.customDays.find(d => d.id === editingDayId);
+                if (day) day.name = name;
+                showToast(t('jourRenomme'));
+            } else {
+                const id = 'day-' + Date.now();
+                state.customDays.push({ id, name, periods: [] });
+                state.activeDayId = id;
+                showToast(t('jourCree'));
+            }
+            editingDayId = null;
+            saveState();
+            applySchoolTheme();
+            closeOverlay('day-overlay');
+            renderDaySelector();
+            renderPeriodsList();
+        };
+
+        document.getElementById('btn-day-cancel').onclick = () => closeOverlay('day-overlay');
+
+        // ===================================================================
+        // MANAGE DAYS PANEL
+        // ===================================================================
+        document.getElementById('btn-days-manage').onclick = () => { renderDaysManagePanel(); openOverlay('days-manage-overlay'); };
+        document.getElementById('btn-days-manage-close').onclick = () => closeOverlay('days-manage-overlay');
+
+        function renderDaysManagePanel() {
+            const schoolList = document.getElementById('school-days-list');
+            schoolList.innerHTML = '';
+            Object.keys(SCHOOL_SCHEDULES).forEach(key => {
+                const isActive = state.activeDayId === 'school-' + key;
+                const row = document.createElement('div');
+                row.className = 'day-manage-row';
+                row.innerHTML = `
+      <span class="period-dot" style="${isActive ? 'background:var(--accent);box-shadow:0 0 6px var(--accent)' : ''}"></span>
+      <span class="day-manage-name">${schoolName(key)}</span>
+      ${isActive ? `<span class="day-manage-badge">${t('actif')}</span>` : ''}
+      <div class="period-actions" style="opacity:1;">
+        <button class="btn-mini" onclick="setActiveDay('school-${key}')" title="Activer">▶</button>
+      </div>
+    `;
+                schoolList.appendChild(row);
+            });
+
+            const customList = document.getElementById('custom-days-list');
+            customList.innerHTML = '';
+            if (!state.customDays.length) {
+                customList.innerHTML = `<div style="color:var(--text-dim);font-size:0.75rem;padding:8px 0;">${state.lang === 'fr' ? 'Aucun jour personnalisé' : 'No custom days'}</div>`;
+                return;
+            }
+            state.customDays.forEach(day => {
+                const isActive = state.activeDayId === day.id;
+                const row = document.createElement('div');
+                row.className = 'day-manage-row';
+                row.innerHTML = `
+      <span class="period-dot" style="${isActive ? 'background:var(--accent);box-shadow:0 0 6px var(--accent)' : ''}"></span>
+      <span class="day-manage-name">${day.name}</span>
+      ${isActive ? `<span class="day-manage-badge">${t('actif')}</span>` : ''}
+      <div class="period-actions" style="opacity:1;gap:4px;display:flex;">
+        <button class="btn-mini" onclick="setActiveDay('${day.id}')" title="Activer">▶</button>
+        <button class="btn-mini" onclick="renameDay('${day.id}')" title="${t('renommer')}">✎</button>
+        <button class="btn-mini" onclick="duplicateDay('${day.id}')" title="${t('dupliquer')}">⧉</button>
+        <button class="btn-mini danger" onclick="deleteDay('${day.id}')" title="${t('supprimer')}">✕</button>
+      </div>
+    `;
+                customList.appendChild(row);
+            });
+        }
+
+        function setActiveDay(id) {
+            const currentAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+            document.documentElement.style.setProperty('--old-accent', currentAccent);
+            state.activeDayId = id;
+            saveState();
+            applySchoolTheme();
+            renderDaySelector();
+            renderPeriodsList();
+            renderDaysManagePanel();
+        }
+
+        function renameDay(id) {
+            const day = state.customDays.find(d => d.id === id);
+            if (!day) return;
+            editingDayId = id;
+            document.getElementById('day-form-title').textContent = t('renommer');
+            document.getElementById('inp-day-name').value = day.name;
+            closeOverlay('days-manage-overlay');
+            openOverlay('day-overlay');
+        }
+
+        function duplicateDay(id) {
+            const day = state.customDays.find(d => d.id === id);
+            if (!day) return;
+            const copy = { id: 'day-' + Date.now(), name: day.name + (state.lang === 'fr' ? ' (copie)' : ' (copy)'), periods: JSON.parse(JSON.stringify(day.periods)) };
+            state.customDays.push(copy);
+            saveState();
+            renderDaysManagePanel();
+            renderDaySelector();
+            showToast(t('jourDuplique'));
+        }
+
+        function deleteDay(id) {
+            if (!confirm(t('confirmerSuppr'))) return;
+            state.customDays = state.customDays.filter(d => d.id !== id);
+            if (state.activeDayId === id) state.activeDayId = 'school-Pionniers';
+            saveState();
+            renderDaysManagePanel();
+            renderDaySelector();
+            renderPeriodsList();
+            showToast(t('jourSupprime'));
+        }
+
+        // ===================================================================
+        // SETTINGS
+        // ===================================================================
+        document.getElementById('btn-settings').onclick = () => { loadSettingsForm(); openOverlay('settings-overlay'); };
+        document.getElementById('btn-settings-close').onclick = () => closeOverlay('settings-overlay');
+
+        document.getElementById('btn-settings-save').onclick = () => {
+            state.settings.bgColor = document.getElementById('inp-bg-color').value;
+            state.settings.accentColor = document.getElementById('inp-accent-color').value;
+            state.settings.glow = document.getElementById('toggle-glow').checked;
+            state.settings.scanlines = document.getElementById('toggle-scanlines').checked;
+            state.settings.fontSize = parseFloat(document.getElementById('range-font-size').value);
+            state.settings.format12h = document.getElementById('toggle-12h').checked;
+            state.settings.showSeconds = document.getElementById('toggle-show-seconds').checked;
+            state.settings.pulsing = document.getElementById('toggle-pulsing').checked;
+            state.settings.bellStart = document.getElementById('toggle-bell-start').checked;
+            state.settings.bellEnd = document.getElementById('toggle-bell-end').checked;
+            state.lang = document.getElementById('sel-language').value;
+            state.settings.overrideSchoolColor = document.getElementById('toggle-override-school-color').checked;
+
+            applySettings();
+            saveState();
+            closeOverlay('settings-overlay');
+            applyTranslations();
+            renderDaySelector();
+            renderPeriodsList();
+            showToast(t('sauvegarde'));
+        };
+
+        function loadSettingsForm() {
+            document.getElementById('inp-bg-color').value = state.settings.bgColor;
+            document.getElementById('inp-accent-color').value = getEffectiveAccentColor();
+            document.getElementById('toggle-glow').checked = state.settings.glow;
+            document.getElementById('toggle-scanlines').checked = state.settings.scanlines;
+            document.getElementById('range-font-size').value = state.settings.fontSize;
+            document.getElementById('font-size-val').textContent = state.settings.fontSize.toFixed(1) + '×';
+            document.getElementById('toggle-12h').checked = state.settings.format12h;
+            document.getElementById('toggle-show-seconds').checked = state.settings.showSeconds;
+            document.getElementById('toggle-pulsing').checked = state.settings.pulsing;
+            document.getElementById('toggle-bell-start').checked = state.settings.bellStart;
+            document.getElementById('toggle-bell-end').checked = state.settings.bellEnd;
+            document.getElementById('sel-language').value = state.lang;
+            document.getElementById('toggle-override-school-color').checked = state.settings.overrideSchoolColor;
+        }
+
+        document.getElementById('range-font-size').addEventListener('input', function () {
+            document.getElementById('font-size-val').textContent = parseFloat(this.value).toFixed(1) + '×';
+        });
+
+        function getEffectiveAccentColor() {
+            if (state.activeDayId.startsWith('school-') && !state.settings.overrideSchoolColor) {
+                const key = state.activeDayId.replace('school-', '');
+                if (SCHOOL_THEME_COLORS[key]) return SCHOOL_THEME_COLORS[key];
+            }
+            return state.settings.accentColor;
+        }
+
+        function applyAccentColor(hex) {
+            const r = document.documentElement.style;
+            r.setProperty('--accent', hex);
+            const bigint = parseInt(hex.slice(1), 16);
+            const ra = (bigint >> 16) & 255;
+            const ga = (bigint >> 8) & 255;
+            const ba = bigint & 255;
+            r.setProperty('--accent-dim', `rgba(${ra},${ga},${ba},0.15)`);
+            r.setProperty('--accent-mid', `rgba(${ra},${ga},${ba},0.4)`);
+            r.setProperty('--panel-border', `rgba(${ra},${ga},${ba},0.25)`);
+        }
+
+        function applySchoolTheme() {
+            const effectiveColor = getEffectiveAccentColor();
+            applyAccentColor(effectiveColor);
+
+            if (!state.settings.overrideSchoolColor) {
+                Object.keys(SCHOOL_THEME_COLORS).forEach(schoolKey => {
+                    const schoolColor = SCHOOL_THEME_COLORS[schoolKey];
+                    const schoolTab = document.querySelector(`.day-tab-school:nth-child(${Object.keys(SCHOOL_THEME_COLORS).indexOf(schoolKey) + 1})`);
+                    if (schoolTab) {
+                        schoolTab.style.setProperty('--school-accent', schoolColor);
+                        const r = parseInt(schoolColor.slice(1), 16) >> 16;
+                        const g = (parseInt(schoolColor.slice(1), 16) >> 8) & 255;
+                        const b = parseInt(schoolColor.slice(1), 16) & 255;
+                        schoolTab.style.setProperty('--school-accent-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
+                    }
+                });
+            } else {
+                const customColor = state.settings.accentColor;
+                document.querySelectorAll('.day-tab-school').forEach(schoolTab => {
+                    schoolTab.style.setProperty('--school-accent', customColor);
+                    const r = parseInt(customColor.slice(1), 16) >> 16;
+                    const g = (parseInt(customColor.slice(1), 16) >> 8) & 255;
+                    const b = parseInt(customColor.slice(1), 16) & 255;
+                    schoolTab.style.setProperty('--school-accent-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
+                });
+            }
+        }
+
+        function applySettings() {
+            const r = document.documentElement.style;
+            r.setProperty('--bg', state.settings.bgColor);
+            applyAccentColor(state.settings.accentColor);
+            r.setProperty('--glow-on', state.settings.glow ? '1' : '0');
+            r.setProperty('--font-scale', state.settings.fontSize);
+
+            if (state.settings.scanlines) {
+                document.body.classList.remove('no-scanlines');
+            } else {
+                document.body.classList.add('no-scanlines');
+            }
+        }
+
+        // ===================================================================
+        // TRANSLATIONS APPLICATION
+        // ===================================================================
+        function applyTranslations() {
+            document.getElementById('app-title').textContent = t('appTitle');
+            document.getElementById('btn-mini-mode').textContent = t('mini');
+            document.getElementById('btn-fullscreen').textContent = t('full');
+            document.getElementById('btn-days-manage').textContent = t('days');
+            document.getElementById('btn-settings').textContent = t('settings');
+            document.getElementById('btn-add-day').textContent = t('addDay');
+            document.getElementById('schedule-list-title').textContent = t('periodes');
+            document.getElementById('btn-add-period').textContent = t('addPeriod');
+            document.getElementById('lbl-period-name').textContent = t('periodeName');
+            document.getElementById('inp-period-name').placeholder = t('periodePlaceholder');
+            document.getElementById('lbl-period-start').textContent = t('heureDebut');
+            document.getElementById('lbl-period-end').textContent = t('heureFin');
+            document.getElementById('btn-period-cancel').textContent = t('annuler');
+            document.getElementById('btn-period-save').textContent = t('enregistrer');
+            document.getElementById('lbl-day-name').textContent = t('nomJour');
+            document.getElementById('inp-day-name').placeholder = t('nomJourPlaceholder');
+            document.getElementById('btn-day-cancel').textContent = t('annuler');
+            document.getElementById('btn-day-save').textContent = t('creer');
+            document.getElementById('h2-gerer-jours').textContent = t('gererJours');
+            document.getElementById('h3-horaires-ecoles').textContent = t('horairesEcoles');
+            document.getElementById('h3-jours-perso').textContent = t('joursPerso');
+            document.getElementById('btn-days-manage-close').textContent = t('fermer');
+            document.getElementById('h2-parametres').textContent = t('parametres');
+            document.getElementById('h3-langue').textContent = t('langue');
+            document.getElementById('lbl-langue').textContent = t('langueLabel');
+            document.getElementById('h3-apparence').textContent = t('apparence');
+            document.getElementById('lbl-bg-color').textContent = t('bgColor');
+            document.getElementById('lbl-accent-color').textContent = t('accentColor');
+            document.getElementById('lbl-glow').textContent = t('glow');
+            document.getElementById('lbl-scanlines').textContent = t('scanlines');
+            document.getElementById('h3-affichage').textContent = t('affichage');
+            document.getElementById('lbl-font-size').innerHTML = t('fontSize') + ' — <span id="font-size-val">' + state.settings.fontSize.toFixed(1) + '×</span>';
+            document.getElementById('lbl-12h').textContent = t('format12h');
+            document.getElementById('lbl-show-seconds').textContent = t('showSeconds');
+            document.getElementById('lbl-pulsing').textContent = t('pulsing');
+            document.getElementById('h3-sons').textContent = t('sons');
+            document.getElementById('lbl-bell-start').textContent = t('bellStart');
+            document.getElementById('lbl-bell-end').textContent = t('bellEnd');
+            document.getElementById('btn-settings-close').textContent = t('fermer');
+            document.getElementById('btn-settings-save').textContent = t('appliquer');
+        }
+
+        // ===================================================================
+        // MINI MODE + PIP
+        // ===================================================================
+        document.getElementById('btn-mini-mode').onclick = async () => {
+            state.miniMode = !state.miniMode;
+            document.body.classList.toggle('mini-mode', state.miniMode);
+            document.getElementById('btn-mini-mode').classList.toggle('active', state.miniMode);
+            saveState();
+
+            if (state.miniMode && pipVideo && !document.pictureInPictureElement) {
+                try {
+                    await pipVideo.requestPictureInPicture();
+                } catch (error) {
+                    console.log('PiP error:', error);
+                }
+            } else if (!state.miniMode && document.pictureInPictureElement) {
+                try {
+                    await document.exitPictureInPicture();
+                } catch (error) {
+                    console.log('PiP exit error:', error);
+                }
+            }
+        };
+
+        // ===================================================================
+        // FULLSCREEN
+        // ===================================================================
+        document.getElementById('btn-fullscreen').onclick = () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => { });
+                document.getElementById('btn-fullscreen').classList.add('active');
+            } else {
+                document.exitFullscreen();
+                document.getElementById('btn-fullscreen').classList.remove('active');
+            }
+        };
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) document.getElementById('btn-fullscreen').classList.remove('active');
+        });
+
+        // ===================================================================
+        // OVERLAY HELPERS
+        // ===================================================================
+        function openOverlay(id) { document.getElementById(id).classList.add('open'); }
+        function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+
+        document.querySelectorAll('.overlay').forEach(ov => {
+            ov.addEventListener('click', e => { if (e.target === ov) closeOverlay(ov.id); });
+        });
+
+        // ===================================================================
+        // TOAST
+        // ===================================================================
+        let toastTimer = null;
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+        }
+
+        // ===================================================================
+        // SCANLINES PATCH
+        // ===================================================================
+        const scanlinesStyle = document.createElement('style');
+        scanlinesStyle.textContent = `body.no-scanlines::before { opacity: 0 !important; }`;
+        document.head.appendChild(scanlinesStyle);
+
+        // ===================================================================
+        // INIT
+        // ===================================================================
+        function init() {
+            state.miniMode = false;
+            loadState();
+            applySettings();
+            applyTranslations();
+            applySchoolTheme();
+            renderDaySelector();
+            renderPeriodsList();
+            document.body.classList.toggle('mini-mode', false);
+            initCanvas();
+            tick();
+        }
+
+        function tick() {
+            renderClock();
+            drawCanvas();
+            if (!tick._cnt) tick._cnt = 0;
+            tick._cnt++;
+            if (tick._cnt % 10 === 0) renderPeriodsList();
+            setTimeout(tick, 1000);
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
