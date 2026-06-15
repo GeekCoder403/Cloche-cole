@@ -1691,26 +1691,35 @@
             const CROP_W_FRAC = 0.4;   // full width minus small side margins
             const CROP_H_FRAC = 0.6;   // tall enough to include progress + next line
 
-            function updatePiPCanvas() {
-                const cw = mainCanvas.width;
-                const ch = mainCanvas.height;
+            const PIP_FPS = 30;
+            const PIP_FRAME_TIME = 1000 / PIP_FPS;
+            let lastPipFrame = 0;
 
-                // Source rectangle on the main canvas
-                const sx = Math.round(cw * CROP_X_FRAC);
-                const sy = Math.round(ch * CROP_Y_FRAC);
-                const sw = Math.round(cw * CROP_W_FRAC);
-                const sh = Math.round(ch * CROP_H_FRAC);
+            function updatePiPCanvas(timestamp) {
+                if (timestamp - lastPipFrame >= PIP_FRAME_TIME) {
+                    lastPipFrame = timestamp;
 
-                // Fill with the background colour so transparent areas stay clean
-                pipCtx.fillStyle = state.settings.bgColor || '#000000';
-                pipCtx.fillRect(0, 0, PIP_W, PIP_H);
+                    const cw = mainCanvas.width;
+                    const ch = mainCanvas.height;
 
-                // Crop the relevant region from main canvas and stretch it to
-                // fill the entire PiP canvas → zoomed / magnified effect
-                pipCtx.drawImage(mainCanvas, sx, sy, sw, sh, 0, 0, PIP_W, PIP_H);
+                    // Source rectangle on the main canvas
+                    const sx = Math.round(cw * CROP_X_FRAC);
+                    const sy = Math.round(ch * CROP_Y_FRAC);
+                    const sw = Math.round(cw * CROP_W_FRAC);
+                    const sh = Math.round(ch * CROP_H_FRAC);
+
+                    // Fill with the background colour so transparent areas stay clean
+                    pipCtx.fillStyle = state.settings.bgColor || '#000000';
+                    pipCtx.fillRect(0, 0, PIP_W, PIP_H);
+
+                    // Crop the relevant region from main canvas and stretch it to fill PiP
+                    pipCtx.drawImage(mainCanvas, sx, sy, sw, sh, 0, 0, PIP_W, PIP_H);
+                }
 
                 requestAnimationFrame(updatePiPCanvas);
             }
+
+            requestAnimationFrame(updatePiPCanvas);
 
             updatePiPCanvas();
 
