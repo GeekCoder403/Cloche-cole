@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Horaire Scolaire</title>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
     <style>
         /* ===================== RESET & BASE ===================== */
         *,
@@ -1554,7 +1556,7 @@
             const [h, m] = t.split(':').map(Number);
             return h * 3600 + m * 60;
         }
-        let timeModifier = 0;
+        let timeModifier = -40;
         function nowSec() {
             const n = new Date();
             return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds() - timeModifier;
@@ -1673,7 +1675,7 @@
             pipVideo = document.getElementById('pip-video');
 
             // PiP output resolution — 16:9, matches the reference screenshot
-            const PIP_W = 1920;
+            const PIP_W = 900;
             const PIP_H = 500;
             pipCanvas.width = PIP_W;
             pipCanvas.height = PIP_H;
