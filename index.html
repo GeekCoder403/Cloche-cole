@@ -1726,6 +1726,7 @@
             const info = computeCountdown();
             const fontScale = (state.miniMode) ? Number(state.settings.fontSize * 1.2) : Number(state.settings.fontSize * 1.0);
             const accentColor = getEffectiveAccentColor();
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || 'rgb(255,255,255)';
             const textMidColor = getComputedStyle(document.documentElement).getPropertyValue('--text-mid').trim() || 'rgba(255,255,255,0.7)';
             const textDimColor = getComputedStyle(document.documentElement).getPropertyValue('--text-dim').trim() || 'rgba(255,255,255,0.45)';
 
@@ -1739,7 +1740,7 @@
             else if (info.type === 'between') periodText = `${t('debutDe')} ${info.period.name} ${t('dans')}`;
 
             if (periodText) {
-                ctx.fillStyle = textMidColor;
+                ctx.fillStyle = textColor;
                 ctx.font = `${Math.round(16 * fontScale)}px Roboto, 'Courier New', monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -1785,7 +1786,7 @@
             else if (info.type === 'between') statusText = t('pauseAvant');
 
             if (statusText) {
-                ctx.fillStyle = textDimColor;
+                ctx.fillStyle = textMidColor;
                 ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -1816,7 +1817,7 @@
             ctx.shadowColor = 'transparent';
 
             // Progress labels
-            ctx.fillStyle = textDimColor;
+            ctx.fillStyle = textMidColor;
             ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
 
             let startLabel = '';
@@ -1841,7 +1842,7 @@
             else if (info.type === 'before-class') nextText = `${t('prochain')} ${info.period.name} — ${formatTime(info.period.start)}`;
 
             if (nextText) {
-                ctx.fillStyle = textDimColor;
+                ctx.fillStyle = textMidColor;
                 ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
