@@ -1556,7 +1556,7 @@
             const [h, m] = t.split(':').map(Number);
             return h * 3600 + m * 60;
         }
-        let timeModifier = -40;
+        let timeModifier = -37;
         function nowSec() {
             const n = new Date();
             return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds() - timeModifier;
