@@ -42,8 +42,7 @@
             color: var(--text);
             font-family: 'Roboto', 'Courier New', Courier, monospace;
             overflow-x: hidden;
-            transition: all 0.2s;
-            transition: background 0.5s, color 0.5s;
+            transition: background 0.2s, color 0.2s;
         }
 
         /* ===================== SCANLINES OVERLAY ===================== */
@@ -392,7 +391,7 @@
             border-radius: 50%;
             background: var(--text-dim);
             flex-shrink: 0;
-            transition: background 0.3s;
+            transition: background 0.2s;
         }
 
         .period-row.current .period-dot {
@@ -415,7 +414,7 @@
             display: flex;
             gap: 4px;
             opacity: 0;
-            transition: opacity 0.15s;
+            transition: opacity 0.2s;
         }
 
         .period-row:hover .period-actions {
@@ -434,7 +433,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.15s;
+            transition: all 0.2s;
         }
 
         .btn-mini:hover {
@@ -863,7 +862,7 @@
             font-size: 0.8rem;
             letter-spacing: 0.08em;
             z-index: 9000;
-            transition: transform 0.3s;
+            transition: transform 0.2s;
             box-shadow: 0 0 16px var(--accent-mid);
             white-space: nowrap;
         }
@@ -988,6 +987,7 @@
             height: auto;
             object-fit: cover;
         }
+
         #pip-canvas {
             position: absolute;
             top: 0;
@@ -1246,7 +1246,7 @@
                 avantCours: 'AVANT LES COURS',
                 apres: 'FIN DE JOURNÉE',
                 prochain: 'Prochain :',
-                aucunHoraire: "Aucune période pour aujourd'hui",
+                aucunHoraire: "Pas d'école aujourd'hui 😀",
                 periodeName: 'Nom de la période',
                 periodePlaceholder: 'ex: Mathématiques',
                 heureDebut: 'Heure de début',
@@ -1320,7 +1320,7 @@
                 avantCours: 'BEFORE CLASSES',
                 apres: 'END OF DAY',
                 prochain: 'Next:',
-                aucunHoraire: 'No schedule for today',
+                aucunHoraire: ' No school today 😀',
                 periodeName: 'Period name',
                 periodePlaceholder: 'e.g.: Mathematics',
                 heureDebut: 'Start time',
@@ -1386,7 +1386,7 @@
             'Rochebelle': '#a10050',
             'PAL': '#e3221f',
         };
-
+        let timeModif = 0; // used to adjust time for schools that start before/after the hour (ex: SCG starts at 8:30, so timeMod is -30 to compensate)
         const SCHOOL_SCHEDULES = {
             'Pionniers': {
                 displayName: { fr: 'École des Pionniers', en: 'Pionniers School' },
@@ -1397,7 +1397,7 @@
                     { id: 's4', name: { fr: 'Période 3', en: 'Period 3' }, start: '12:35', end: '13:45' },
                     { id: 's5', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:00', end: '15:10' },
                 ],
-                timeMod: 117
+                timeMod: 37
             },
             'Compagnons': {
                 displayName: { fr: 'Collège des Compagnons', en: 'Collège des Compagnons' },
@@ -1419,7 +1419,7 @@
                     { id: 'g1e', name: { fr: 'Période 3', en: 'Period 3' }, start: '12:55', end: '14:07' },
                     { id: 'g1f', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:20', end: '15:32' },
                 ],
-                timeMod: -30
+                timeMod: 30
             },
             'SCG-2e': {
                 displayName: { fr: 'Saint-Charles-Garnier (2e cycle)', en: 'Saint-Charles-Garnier (2nd cycle)' },
@@ -1519,6 +1519,12 @@
             return s.displayName[state.lang] || s.displayName.fr;
         }
 
+        function schoolTimeMod(key) {
+            const s = SCHOOL_SCHEDULES[key];
+            if (!s) return 0;
+            return s.timeMod || 0;
+        }
+
         function periodName(p) {
             if (typeof p.name === 'object') return p.name[state.lang] || p.name.fr;
             return p.name;
@@ -1556,10 +1562,10 @@
             const [h, m] = t.split(':').map(Number);
             return h * 3600 + m * 60;
         }
-        let timeModifier = -40;
         function nowSec() {
             const n = new Date();
-            return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds() - timeModifier;
+            timeModif = state.activeDayId.startsWith('school-') ? schoolTimeMod(state.activeDayId.replace('school-', '')) : 0;
+            return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds() + timeModif;
         }
 
         function secToHMS(s) {
@@ -1609,7 +1615,10 @@
 
             const now = nowSec();
             const sorted = [...periods].sort((a, b) => timeToSec(a.start) - timeToSec(b.start));
-
+            const nowDate = new Date();
+            if (nowDate.getDay() === 6 || nowDate.getDay() === 0) {
+                return { type: 'nothing' };
+            }
             for (let i = 0; i < sorted.length; i++) {
                 const p = sorted[i];
                 const s = timeToSec(p.start);
@@ -1763,6 +1772,7 @@
             let countdownFontPx = Math.round(48 * fontScale);
 
             if (info.type === 'empty') countdownText = '--h --m --s';
+            else if (info.type === 'nothing') countdownText = t('aucunHoraire').toUpperCase();
             else if (info.type === 'after') { countdownText = t('journeeTerminee'); countdownFontPx = Math.round(32 * fontScale); }
             else if (info.type === 'in-class') countdownText = secToHMS(info.remaining);
             else if (info.type === 'before-class') countdownText = secToHMS(info.remaining);
@@ -1795,7 +1805,7 @@
             else if (info.type === 'in-class') statusText = `${t('enCours')} — ${formatTime(info.periodStart)} → ${formatTime(info.periodEnd)}`;
             else if (info.type === 'before-class') statusText = t('avantCours');
             else if (info.type === 'between') statusText = t('pauseAvant');
-
+            else if (info.type === 'nothing') statusText = '';
             if (statusText) {
                 ctx.fillStyle = textMidColor;
                 ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
@@ -1803,7 +1813,14 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillText(statusText, centerX, centerY + 60 * fontScale);
             }
-
+            if (info.type === 'nothing') return;
+            if (info.type === 'after') {
+                ctx.fillStyle = textMidColor;
+                ctx.font = `${Math.round(13 * fontScale)}px Roboto, 'Courier New', monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(t('apres').toUpperCase(), centerX, centerY + 60 * fontScale);
+            }
             // Progress bar
             const progressY = centerY + (state.miniMode ? 80 : 100) * fontScale;
             const progressWidth = Math.min(500, canvas.width * 0.9);
@@ -2449,6 +2466,15 @@
         }
 
         init();
+
+        document.querySelector('#inp-accent-color').addEventListener('change', function () {
+            const color = this.value;
+            document.getElementById('toggle-override-school-color').checked = true;
+            state.settings.overrideSchoolColor = true;
+            state.settings.accentColor = color;
+            saveState(); 
+            applySchoolTheme();
+        });
     </script>
 </body>
 

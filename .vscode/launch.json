@@ -8,7 +8,7 @@
             "type": "chrome",
             "request": "launch",
             "name": "Open index.html",
-            "file": "/workspaces/Cloche-cole/index.html"
+            "file": "/Cloche-cole/index.html"
         }
     ]
 }
