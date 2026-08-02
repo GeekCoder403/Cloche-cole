@@ -1388,17 +1388,6 @@
         };
         let timeModif = 0; // used to adjust time for schools that start before/after the hour (ex: SCG starts at 8:30, so timeMod is -30 to compensate)
         const SCHOOL_SCHEDULES = {
-            'Pionniers': {
-                displayName: { fr: 'École des Pionniers', en: 'Pionniers School' },
-                periods: [
-                    { id: 's1', name: { fr: 'Période 1', en: 'Period 1' }, start: '08:10', end: '09:20' },
-                    { id: 's2', name: { fr: 'Période 2', en: 'Period 2' }, start: '09:35', end: '10:45' },
-                    { id: 's3', name: { fr: 'Période PIC', en: 'Periode PIC' }, start: '10:55', end: '11:15' },
-                    { id: 's4', name: { fr: 'Période 3', en: 'Period 3' }, start: '12:35', end: '13:45' },
-                    { id: 's5', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:00', end: '15:10' },
-                ],
-                timeMod: 37
-            },
             'SBI': {
                 displayName: { fr: 'SBI', en: 'SBI' },
                 periods: [
@@ -1408,59 +1397,6 @@
                     { id: 's4', name: { fr: '4', en: '4' }, start: '15:15', end: '17:30' },
                 ],
                 timeMod: 0
-            },
-            'Compagnons': {
-                displayName: { fr: 'Collège des Compagnons', en: 'Collège des Compagnons' },
-                periods: [
-                    { id: 'c1', name: { fr: 'Période 1', en: 'Period 1' }, start: '09:10', end: '10:20' },
-                    { id: 'c2', name: { fr: 'Période 2', en: 'Period 2' }, start: '10:35', end: '11:45' },
-                    { id: 'c3', name: { fr: 'Période 3', en: 'Period 3' }, start: '13:05', end: '14:15' },
-                    { id: 'c4', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:30', end: '15:40' },
-                    { id: 'c5', name: { fr: "Période d'étude", en: 'Study Period' }, start: '15:50', end: '16:15' },
-                ],
-                timeMod: 12
-            },
-            'SCG-1er': {
-                displayName: { fr: 'Saint-Charles-Garnier (1er cycle)', en: 'Saint-Charles-Garnier (1st cycle)' },
-                periods: [
-                    { id: 'g1a', name: { fr: 'Période 1', en: 'Period 1' }, start: '08:30', end: '09:42' },
-                    { id: 'g1b', name: { fr: 'Période 2', en: 'Period 2' }, start: '09:55', end: '11:07' },
-                    { id: 'g1c', name: { fr: "Période d'étude", en: 'Study Period' }, start: '11:20', end: '11:45' },
-                    { id: 'g1e', name: { fr: 'Période 3', en: 'Period 3' }, start: '12:55', end: '14:07' },
-                    { id: 'g1f', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:20', end: '15:32' },
-                ],
-                timeMod: 30
-            },
-            'SCG-2e': {
-                displayName: { fr: 'Saint-Charles-Garnier (2e cycle)', en: 'Saint-Charles-Garnier (2nd cycle)' },
-                periods: [
-                    { id: 'g2a', name: { fr: 'Période 1', en: 'Period 1' }, start: '08:30', end: '09:42' },
-                    { id: 'g2b', name: { fr: 'Période 2', en: 'Period 2' }, start: '09:55', end: '11:07' },
-                    { id: 'g2c', name: { fr: 'Période 3', en: 'Period 3' }, start: '11:20', end: '12:32' },
-                    { id: 'g2e', name: { fr: "Période d'étude", en: 'Study Period' }, start: '13:42', end: '14:07' },
-                    { id: 'g2f', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:20', end: '15:32' },
-                ],
-                timeMod: 30
-            },
-            'Rochebelle': {
-                displayName: { fr: "École de Rochebelle", en: 'Rochebelle School' },
-                periods: [
-                    { id: 'r1', name: { fr: 'Période 1', en: 'Period 1' }, start: '09:10', end: '10:25' },
-                    { id: 'r2', name: { fr: 'Période 2', en: 'Period 2' }, start: '10:40', end: '11:55' },
-                    { id: 'r3', name: { fr: 'Période 3', en: 'Period 3' }, start: '13:25', end: '14:40' },
-                    { id: 'r4', name: { fr: 'Période 4', en: 'Period 4' }, start: '14:55', end: '16:10' },
-                ],
-                timeMod: 12
-            },
-            'PAL': {
-                displayName: { fr: "Polyvalente de l'Ancienne Lorette", en: 'PAL' },
-                periods: [
-                    { id: 'p1', name: { fr: 'Période 1', en: 'Period 1' }, start: '09:20', end: '10:35' },
-                    { id: 'p2', name: { fr: 'Période 2', en: 'Period 2' }, start: '10:50', end: '12:05' },
-                    { id: 'p3', name: { fr: 'Période 3', en: 'Period 3' }, start: '13:30', end: '14:45' },
-                    { id: 'p4', name: { fr: 'Période 4', en: 'Period 4' }, start: '15:00', end: '16:15' },
-                ],
-                timeMod: 12
             }
         };
 
@@ -1626,9 +1562,6 @@
             const now = nowSec();
             const sorted = [...periods].sort((a, b) => timeToSec(a.start) - timeToSec(b.start));
             const nowDate = new Date();
-            if ((nowDate.getDay() === 6 || nowDate.getDay() === 0) && !state.activeDayId.startsWith('school-')) {
-                return { type: 'nothing' };
-            }
             for (let i = 0; i < sorted.length; i++) {
                 const p = sorted[i];
                 const s = timeToSec(p.start);
