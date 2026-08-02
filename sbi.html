@@ -1626,7 +1626,7 @@
             const now = nowSec();
             const sorted = [...periods].sort((a, b) => timeToSec(a.start) - timeToSec(b.start));
             const nowDate = new Date();
-            if (nowDate.getDay() === 6 || nowDate.getDay() === 0) {
+            if ((nowDate.getDay() === 6 || nowDate.getDay() === 0) && !state.activeDayId.startsWith('school-')) {
                 return { type: 'nothing' };
             }
             for (let i = 0; i < sorted.length; i++) {
